@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ads.txt Crawler</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+        textarea {
+            width: 45%;
+            height: 200px;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+            width: 100%;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 8px;
+        }
+        .found {
+            color: green;
+            font-weight: bold;
+        }
+        .missing {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Ads.txt Crawler 🚀</h2>
+
+<form method="POST">
+    <textarea name="urls" placeholder="Paste ads.txt URLs (one per line)"></textarea>
+    <textarea name="lines" placeholder="Paste ads.txt lines to check"></textarea>
+
+    <br>
+    <input type="email" name="email" placeholder="Enter email (optional)" style="width:300px; padding:8px;">
+    <br><br>
+
+    <button type="submit">Run Check</button>
+</form>
+
+{% if results %}
+<table>
+    <tr>
+        <th>URL</th>
+        <th>Line</th>
+        <th>Status</th>
+    </tr>
+    {% for row in results %}
+    <tr>
+        <td>{{ row.url }}</td>
+        <td>{{ row.line }}</td>
+        <td class="{{ 'found' if row.status else 'missing' }}">
+            {{ 'FOUND' if row.status else 'MISSING' }}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+</body>
+</html>
