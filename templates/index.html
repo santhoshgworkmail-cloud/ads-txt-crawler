@@ -1,75 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Ads.txt Crawler</title>
+    <meta charset="UTF-8">
+    <title>Ads.txt Crawler 🚀</title>
     <style>
-        body {
-            font-family: Arial;
-            padding: 20px;
-        }
-        textarea {
-            width: 45%;
-            height: 200px;
-            margin: 10px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-        table {
-            border-collapse: collapse;
-            margin-top: 20px;
-            width: 100%;
-        }
-        table, th, td {
-            border: 1px solid #ccc;
-        }
-        th, td {
-            padding: 8px;
-        }
-        .found {
-            color: green;
-            font-weight: bold;
-        }
-        .missing {
-            color: red;
-            font-weight: bold;
-        }
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h2 { margin-bottom: 20px; }
+        textarea { width: 100%; height: 100px; padding: 8px; margin-bottom: 10px; }
+        input[type="email"] { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { background-color:#007BFF; color:white; border:none; padding:10px 16px; font-size:16px; cursor:pointer; border-radius:4px; }
+        button:hover { background-color:#0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 8px 12px; border: 1px solid #ccc; text-align: left; }
+        th { background-color: #f0f0f0; }
+        .found { color: green; font-weight: bold; }
+        .missing { color: red; font-weight: bold; }
+        #download-csv-btn { display: inline-flex; align-items: center; margin-bottom: 12px; }
+        #download-csv-btn span { margin-right: 6px; font-size: 18px; }
     </style>
 </head>
 <body>
+    <h2>Ads.txt Crawler 🚀</h2>
 
-<h2>Ads.txt Crawler 🚀</h2>
+    <form method="POST">
+        <textarea name="urls" placeholder="Paste ads.txt URLs (one per line)">{{ request.form.get('urls', '') }}</textarea>
+        <textarea name="lines" placeholder="Paste ads.txt lines to check">{{ request.form.get('lines', '') }}</textarea>
 
-<form method="POST">
-    <textarea name="urls" placeholder="Paste ads.txt URLs (one per line)"></textarea>
-    <textarea name="lines" placeholder="Paste ads.txt lines to check"></textarea>
+        <input type="email" name="email" placeholder="Enter email (optional)" value="{{ request.form.get('email', '') }}">
+        <button type="submit">Run Check</button>
+    </form>
 
-    <br>
-    <input type="email" name="email" placeholder="Enter email (optional)" style="width:300px; padding:8px;">
-    <br><br>
+    {% if results %}
+        <!-- Modern Download Button -->
+        <button id="download-csv-btn"><span>⬇️</span>Download CSV</button>
 
-    <button type="submit">Run Check</button>
-</form>
+        <!-- Results Table -->
+        <table>
+            <tr>
+                <th>URL</th>
+                <th>Line</th>
+                <th>Status</th>
+            </tr>
+            {% for r in results %}
+            <tr>
+                <td>{{ r.url }}</td>
+                <td>{{ r.line }}</td>
+                <td class="{{ 'found' if r.status else 'missing' }}">
+                    {{ 'FOUND' if r.status else 'MISSING' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
 
-{% if results %}
-<table>
-    <tr>
-        <th>URL</th>
-        <th>Line</th>
-        <th>Status</th>
-    </tr>
-    {% for row in results %}
-    <tr>
-        <td>{{ row.url }}</td>
-        <td>{{ row.line }}</td>
-        <td class="{{ 'found' if row.status else 'missing' }}">
-            {{ 'FOUND' if row.status else 'MISSING' }}
-        </td>
-    </tr>
-    {% endfor %}
-</table>
-{% endif %}
+    <script>
+    document.getElementById("download-csv-btn")?.addEventListener("click", function(e){
+        e.preventDefault();
 
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.style.display = "none";
+
+        const urlsInput = document.createElement("input");
+        urlsInput.name = "urls";
+        urlsInput.value = document.querySelector("textarea[name='urls']").value;
+        form.appendChild(urlsInput);
+
+        const linesInput = document.createElement("input");
+        linesInput.name = "lines";
+        linesInput.value = document.querySelector("textarea[name='lines']").value;
+        form.appendChild(linesInput);
+
+        const downloadInput = document.createElement("input");
+        downloadInput.name = "download";
+        downloadInput.value = "csv";
+        form.appendChild(downloadInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    });
+    </script>
 </body>
 </html>
