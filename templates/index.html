@@ -4,19 +4,98 @@
     <meta charset="UTF-8">
     <title>Ads.txt Crawler 🚀</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        h2 { margin-bottom: 20px; }
-        textarea { width: 100%; height: 100px; padding: 8px; margin-bottom: 10px; }
-        input[type="email"] { width: 100%; padding: 8px; margin-bottom: 10px; }
-        button { background-color:#007BFF; color:white; border:none; padding:10px 16px; font-size:16px; cursor:pointer; border-radius:4px; }
-        button:hover { background-color:#0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 8px 12px; border: 1px solid #ccc; text-align: left; }
-        th { background-color: #f0f0f0; }
-        .found { color: green; font-weight: bold; }
-        .missing { color: red; font-weight: bold; }
-        #download-csv-btn { display: inline-flex; align-items: center; margin-bottom: 12px; }
-        #download-csv-btn span { margin-right: 6px; font-size: 18px; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #fdfcf5;
+            color: #222;
+            margin: 30px;
+        }
+
+        h2 {
+            color: #bfa13d; /* luxury gold */
+            margin-bottom: 20px;
+        }
+
+        textarea, input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        .button-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        button {
+            background-color: #bfa13d; /* luxury gold */
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #8c741f; /* darker gold */
+        }
+
+        #download-csv-btn {
+            display: inline-flex;
+            align-items: center;
+            font-size: 16px;
+            text-decoration: none;
+            color: #bfa13d;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        #download-csv-btn span {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        #download-csv-btn:hover {
+            color: #8c741f;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f5f3e7;
+        }
+
+        .found {
+            color: green;
+            font-weight: bold;
+        }
+
+        .missing {
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -27,13 +106,16 @@
         <textarea name="lines" placeholder="Paste ads.txt lines to check">{{ request.form.get('lines', '') }}</textarea>
 
         <input type="email" name="email" placeholder="Enter email (optional)" value="{{ request.form.get('email', '') }}">
-        <button type="submit">Run Check</button>
+
+        <div class="button-wrapper">
+            <button type="submit">Run Check</button>
+            {% if results %}
+            <button type="button" id="download-csv-btn"><span>⬇️</span>Download CSV</button>
+            {% endif %}
+        </div>
     </form>
 
     {% if results %}
-        <!-- Modern Download Button -->
-        <button id="download-csv-btn"><span>⬇️</span>Download CSV</button>
-
         <!-- Results Table -->
         <table>
             <tr>
@@ -61,16 +143,19 @@
         form.method = "POST";
         form.style.display = "none";
 
+        // Copy URLs
         const urlsInput = document.createElement("input");
         urlsInput.name = "urls";
         urlsInput.value = document.querySelector("textarea[name='urls']").value;
         form.appendChild(urlsInput);
 
+        // Copy lines
         const linesInput = document.createElement("input");
         linesInput.name = "lines";
         linesInput.value = document.querySelector("textarea[name='lines']").value;
         form.appendChild(linesInput);
 
+        // Set download flag
         const downloadInput = document.createElement("input");
         downloadInput.name = "download";
         downloadInput.value = "csv";
