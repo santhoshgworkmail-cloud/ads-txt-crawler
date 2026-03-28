@@ -2,16 +2,21 @@ from flask import Flask, request, render_template, Response
 import requests
 import smtplib
 from email.mime.text import MIMEText
+import os
 
 app = Flask(__name__)
+
+# ✅ Environment variables for email credentials
+EMAIL = os.environ.get("EMAIL")
+PASSWORD = os.environ.get("PASSWORD")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     results = []
 
     if request.method == "POST":
-        urls = request.form["urls"].split("\n")
-        lines = request.form["lines"].split("\n")
+        urls = request.form.get("urls", "").split("\n")
+        lines = request.form.get("lines", "").split("\n")
         email = request.form.get("email")
 
         for url in urls:
@@ -34,12 +39,12 @@ def index():
                         "status": line.lower() in content
                     })
 
-            except:
+            except Exception as e:
+                print(f"Error fetching {url}: {e}")
                 for line in lines:
                     line = line.strip()
                     if not line:
                         continue
-
                     results.append({
                         "url": url,
                         "line": line,
@@ -50,53 +55,43 @@ def index():
         if request.form.get("download") == "csv":
             return generate_csv(results)
 
-        # ✅ Email भेजना (optional)
-        if email and "@" in email:
+        # ✅ Send email report if email is valid and credentials exist
+        if email and "@" in email and EMAIL and PASSWORD:
             send_email_report(email.strip(), results)
 
     return render_template("index.html", results=results)
 
-
-# ✅ Email Function
+# ✅ Email sending function (secured)
 def send_email_report(to_email, results):
-    body = "Ads.txt Scan Report\n\n"
-
-    current_url = ""
-    for row in results:
-        if row["url"] != current_url:
-            current_url = row["url"]
-            body += f"\nURL: {current_url}\n"
-
-        status = "FOUND" if row["status"] else "MISSING"
-        body += f"  - {row['line']} → {status}\n"
-
-    msg = MIMEText(body)
-    msg["Subject"] = "Ads.txt Scan Report"
-    msg["From"] = "Santhoshg.workmail@gmail.com"
-    msg["To"] = to_email
-
     try:
         server = smtplib.SMTP("smtp.gmail.com", 587)
         server.starttls()
-        server.login("Santhoshg.workmail@gmail.com", "hofa hkra tekl ltbl")
-        server.send_message(msg)
+        server.login(EMAIL, PASSWORD)
+
+        message_text = "\n".join(
+            [f"URL: {r['url']}, Line: {r['line']}, Found: {r['status']}" for r in results]
+        )
+
+        msg = MIMEText(message_text)
+        msg["Subject"] = "Your ads.txt report"
+        msg["From"] = EMAIL
+        msg["To"] = to_email
+
+        server.sendmail(EMAIL, to_email, msg.as_string())
         server.quit()
     except Exception as e:
         print("Email failed:", e)
 
-
-# ✅ CSV Function
+# ✅ CSV generation function
 def generate_csv(results):
     def generate():
         data = [["URL", "Line", "Status"]]
-
         for row in results:
             data.append([
                 row["url"],
                 row["line"],
                 "FOUND" if row["status"] else "MISSING"
             ])
-
         for row in data:
             yield ",".join(row) + "\n"
 
@@ -106,8 +101,6 @@ def generate_csv(results):
         headers={"Content-Disposition": "attachment;filename=report.csv"}
     )
 
-
-import os
-
+# ✅ Main block for Render deployment
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
