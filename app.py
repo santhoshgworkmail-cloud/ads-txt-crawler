@@ -6,36 +6,38 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
-# ✅ Headers
+# ✅ Headers to avoid blocking
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
-# ✅ Function to normalize URL
+# ✅ Normalize URL
 def normalize_url(url):
     url = url.strip()
     if not url:
         return None
 
-    # Add protocol if missing
     if not url.startswith("http"):
         url = "http://" + url
 
-    # Only append ads.txt if not already a .txt file
     if not url.endswith(".txt"):
-        url = url.rstrip("/") + "/app-ads.txt"
+        url = url.rstrip("/") + "/ads.txt"
 
     return url
 
-# ✅ Fetch function (parallel)
+# ✅ Normalize text (important for matching)
+def normalize_text(text):
+    return text.lower().replace(" ", "").replace("\t", "")
+
+# ✅ Fetch content
 def fetch_url(url):
     try:
         final_url = normalize_url(url)
         if not final_url:
             return url, ""
 
-        response = requests.get(final_url, headers=HEADERS, timeout=2)
-        return final_url, response.text.lower()
+        response = requests.get(final_url, headers=HEADERS, timeout=3)
+        return final_url, response.text
     except Exception as e:
         print(f"Error fetching {url}: {e}")
         return url, ""
@@ -49,23 +51,32 @@ def index():
         lines = request.form.get("lines", "").split("\n")
 
         urls = [u.strip() for u in urls if u.strip()]
+        lines = [l.strip() for l in lines if l.strip()]
 
-        # 🔥 Parallel execution
+        # 🔥 Parallel processing
         with ThreadPoolExecutor(max_workers=20) as executor:
             futures = [executor.submit(fetch_url, url) for url in urls]
 
             for future in as_completed(futures):
                 final_url, content = future.result()
 
+                # Normalize content lines once
+                content_lines = [
+                    normalize_text(line)
+                    for line in content.splitlines()
+                    if line.strip() and not line.strip().startswith("#")
+                ]
+
                 for line in lines:
-                    line = line.strip()
-                    if not line:
-                        continue
+                    clean_line = normalize_text(line)
+
+                    # ✅ Improved matching logic
+                    found = any(clean_line in cl for cl in content_lines)
 
                     results.append({
                         "url": final_url,
                         "line": line,
-                        "status": line.lower() in content
+                        "status": found
                     })
 
         # ✅ CSV download
@@ -94,7 +105,7 @@ def generate_csv(results):
         headers={"Content-Disposition": "attachment; filename=ads-txt-report.csv"}
     )
 
-# ✅ Run locally
+# ✅ Local run
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 10000))
