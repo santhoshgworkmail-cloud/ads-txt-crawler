@@ -23,7 +23,7 @@ def normalize_url(url):
 
     # Only append ads.txt if not already a .txt file
     if not url.endswith(".txt"):
-        url = url.rstrip("/") + "/ads.txt"
+        url = url.rstrip("/") + "/app-ads.txt"
 
     return url
 
