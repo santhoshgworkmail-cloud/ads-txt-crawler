@@ -6,19 +6,38 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
+# ✅ Headers
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
 
-# 🔥 Fetch function (parallel-safe)
+# ✅ Function to normalize URL
+def normalize_url(url):
+    url = url.strip()
+    if not url:
+        return None
+
+    # Add protocol if missing
+    if not url.startswith("http"):
+        url = "http://" + url
+
+    # Only append ads.txt if not already a .txt file
+    if not url.endswith(".txt"):
+        url = url.rstrip("/") + "/ads.txt"
+
+    return url
+
+# ✅ Fetch function (parallel)
 def fetch_url(url):
     try:
-        if not url.endswith("/ads.txt"):
-            url = url.rstrip("/") + "/ads.txt"
+        final_url = normalize_url(url)
+        if not final_url:
+            return url, ""
 
-        response = requests.get(url, headers=HEADERS, timeout=2)
-        return url, response.text.lower()
-    except:
+        response = requests.get(final_url, headers=HEADERS, timeout=2)
+        return final_url, response.text.lower()
+    except Exception as e:
+        print(f"Error fetching {url}: {e}")
         return url, ""
 
 @app.route("/", methods=["GET", "POST"])
@@ -31,12 +50,12 @@ def index():
 
         urls = [u.strip() for u in urls if u.strip()]
 
-        # 🔥 Parallel execution (IMPORTANT)
+        # 🔥 Parallel execution
         with ThreadPoolExecutor(max_workers=20) as executor:
-            future_to_url = {executor.submit(fetch_url, url): url for url in urls}
+            futures = [executor.submit(fetch_url, url) for url in urls]
 
-            for future in as_completed(future_to_url):
-                url, content = future.result()
+            for future in as_completed(futures):
+                final_url, content = future.result()
 
                 for line in lines:
                     line = line.strip()
@@ -44,7 +63,7 @@ def index():
                         continue
 
                     results.append({
-                        "url": url,
+                        "url": final_url,
                         "line": line,
                         "status": line.lower() in content
                     })
@@ -75,6 +94,7 @@ def generate_csv(results):
         headers={"Content-Disposition": "attachment; filename=ads-txt-report.csv"}
     )
 
+# ✅ Run locally
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 10000))
