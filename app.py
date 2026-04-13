@@ -1,15 +1,25 @@
 from flask import Flask, request, render_template, Response
 import requests
-import os
 from io import StringIO
 import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 app = Flask(__name__)
 
-# ✅ Headers to avoid blocking
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
+
+# 🔥 Fetch function (parallel-safe)
+def fetch_url(url):
+    try:
+        if not url.endswith("/ads.txt"):
+            url = url.rstrip("/") + "/ads.txt"
+
+        response = requests.get(url, headers=HEADERS, timeout=2)
+        return url, response.text.lower()
+    except:
+        return url, ""
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -17,36 +27,27 @@ def index():
 
     if request.method == "POST":
         urls = request.form.get("urls", "").split("\n")
-        urls = urls[:10]  # ✅ limit to avoid timeout
-
         lines = request.form.get("lines", "").split("\n")
 
-        for url in urls:
-            url = url.strip()
-            if not url:
-                continue
+        urls = [u.strip() for u in urls if u.strip()]
 
-            # ✅ Ensure ads.txt path
-            if not url.endswith("/ads.txt"):
-                url = url.rstrip("/") + "/ads.txt"
+        # 🔥 Parallel execution (IMPORTANT)
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            future_to_url = {executor.submit(fetch_url, url): url for url in urls}
 
-            try:
-                response = requests.get(url, headers=HEADERS, timeout=2)
-                content = response.text.lower()
-            except Exception as e:
-                print(f"Error fetching {url}: {e}")
-                content = ""
+            for future in as_completed(future_to_url):
+                url, content = future.result()
 
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                results.append({
-                    "url": url,
-                    "line": line,
-                    "status": line.lower() in content
-                })
+                    results.append({
+                        "url": url,
+                        "line": line,
+                        "status": line.lower() in content
+                    })
 
         # ✅ CSV download
         if request.form.get("download") == "csv":
@@ -74,7 +75,7 @@ def generate_csv(results):
         headers={"Content-Disposition": "attachment; filename=ads-txt-report.csv"}
     )
 
-# ✅ Local run
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
